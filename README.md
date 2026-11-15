@@ -1,17 +1,51 @@
-# React + Vite
+# Miguel's Dental Clinic System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React, Vite, and Tailwind frontend with a Node HTTP API and SQLite database.
+Requires Node.js 24 or newer (uses built-in `node:sqlite`).
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env` and set `STAFF_PASSWORD` to a strong password.
+3. In one terminal run `npm run server`.
+4. In another terminal run `npm run dev`, then open the Vite URL.
 
-## React Compiler
+Vite proxies `/api` requests to the backend at `127.0.0.1:3001`.
+The backend creates `server/data/clinic.sqlite` on first start. Database files
+and `.env` are ignored by Git. Keep the database on persistent disk and back it up.
+`DATABASE_PATH` can override the location.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Implemented
 
-## Expanding the ESLint configuration
+- Services, dentist profiles, expandable FAQ, and booking preselection.
+- Persisted appointment requests with server validation and duration overlap checks.
+- “Any available specialist” assigns a dentist with a free interval.
+- Staff password authentication with an HttpOnly session cookie; sessions expire
+  after eight hours and are cleared when the server restarts.
+- Protected appointment list and confirm, complete, or cancel actions.
+- Live availability checks against pending and confirmed bookings. Cancelled and
+  completed bookings do not block a slot. Dates and times use Asia/Manila.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# Dental-Clinic-Sytem
+## Checks
+
+- `npm run build` builds the frontend.
+- `npm test` tests real HTTP requests against a temporary SQLite database,
+  including persistence after restart, overlapping appointments, validation,
+  staff authentication, logout, cancellation, and automatic dentist assignment.
+
+## Remaining work before production
+
+This is a local development implementation. Catalog prices, clinic claims,
+profiles, operating hours, and contact information still need clinic approval.
+The slot schedule is fixed; dentist-specific schedules and holidays are not yet
+implemented. Email/SMS notifications and patient self-service are not enabled.
+Tooth charting remains an unsaved demo and is not linked to patient records.
+
+Staff access currently uses one administrator-configured password, not individual
+staff accounts. Add individual accounts, role permissions, login rate limits,
+audit history, and patient-record controls before using this for real clinic data.
+
+For deployment, serve the frontend and `/api` under the same HTTPS origin with a
+reverse proxy and persistent storage; `vite preview` alone does not proxy the API.
+Set `NODE_ENV=production` to enable Secure session cookies. No deployment is
+configured by this project.
