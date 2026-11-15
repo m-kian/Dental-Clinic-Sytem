@@ -40,3 +40,36 @@ test('appointments persist, reject overlaps, and require staff authentication', 
     assert.equal(persisted.length, 3);
   } finally { if (server?.listening) await stop(); rmSync(dir, { recursive: true, force: true }); }
 });
+
+
+test('Vite proxy preserves browser origin for staff login and rejects foreign origins', async () => {
+  const { createServer } = await import('vite');
+  const { default: config } = await import('../vite.config.js');
+  const api = createApi({ database: ':memory:', password: 'test-secret' });
+  let vite;
+  try {
+    await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+    vite = await createServer({
+      ...config,
+      configFile: false,
+      server: {
+        host: '127.0.0.1', port: 0,
+        proxy: { '/api': { ...config.server.proxy['/api'], target: `http://127.0.0.1:${api.address().port}` } },
+      },
+    });
+    await vite.listen();
+    const origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
+    const login = originHeader => fetch(`${origin}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: originHeader },
+      body: JSON.stringify({ password: 'test-secret' }),
+    });
+    const response = await login(origin);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('set-cookie'), /HttpOnly/);
+    assert.equal((await login('https://foreign.example')).status, 403);
+  } finally {
+    if (vite) await vite.close();
+    if (api.listening) await new Promise(resolve => api.close(resolve));
+  }
+});
