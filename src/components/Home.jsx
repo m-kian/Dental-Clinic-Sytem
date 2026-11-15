@@ -1,4 +1,5 @@
 import React from 'react';
+import { dentists } from '../data/clinic';
 import { 
   ShieldCheck, 
   Award, 
@@ -102,7 +103,7 @@ export default function Home({ onBookNow, onExploreServices }) {
                       DR
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900">Dr. Sarah Jenkins, DDM</h3>
+                      <h3 className="font-bold text-slate-900">{dentists[0].name}</h3>
                       <p className="text-xs text-slate-500">Lead Orthodontist & Dental Surgeon</p>
                     </div>
                   </div>

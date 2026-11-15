@@ -11,10 +11,12 @@ import {
   AlertCircle 
 } from 'lucide-react';
 
-export default function Booking({ onBookingComplete }) {
+import { services, bookingDentists as dentists } from '../data/clinic';
+
+export default function Booking({ initialServiceId, initialDentistId }) {
   const [step, setStep] = useState(1);
-  const [selectedService, setSelectedService] = useState(null);
-  const [selectedDentist, setSelectedDentist] = useState(null);
+  const [selectedService, setSelectedService] = useState(() => services.find(service => service.id === initialServiceId) || null);
+  const [selectedDentist, setSelectedDentist] = useState(() => dentists.find(dentist => dentist.id === initialDentistId) || null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   
@@ -24,20 +26,6 @@ export default function Booking({ onBookingComplete }) {
     phone: '',
     notes: '',
   });
-
-  const services = [
-    { id: 'checkup', name: 'Comprehensive Exam & Cleaning', duration: '45 min', price: '$80' },
-    { id: 'whitening', name: 'Laser Teeth Whitening', duration: '60 min', price: '$220' },
-    { id: 'filling', name: 'Composite Dental Filling', duration: '45 min', price: '$120' },
-    { id: 'ortho', name: 'Orthodontic Consultation', duration: '30 min', price: '$50' },
-    { id: 'rootcanal', name: 'Root Canal Therapy', duration: '90 min', price: '$450' },
-  ];
-
-  const dentists = [
-    { id: 'dr-jenkins', name: 'Dr. Sarah Jenkins, DDM', specialty: 'Orthodontics & General' },
-    { id: 'dr-ramirez', name: 'Dr. Marcus Ramirez, DDS', specialty: 'Cosmetic & Endodontics' },
-    { id: 'any', name: 'Any Available Specialist', specialty: 'First available doctor' },
-  ];
 
   const availableTimes = [
     '09:00 AM', '10:00 AM', '11:30 AM', '02:00 PM', '03:30 PM', '04:45 PM'
@@ -72,6 +60,8 @@ export default function Booking({ onBookingComplete }) {
           ))}
         </div>
       </div>
+
+      <p className="rounded-2xl bg-sky-50 border border-sky-100 p-4 text-sm text-sky-900">Demo booking: prices and times are samples. Appointment requests are not saved or sent to the clinic yet.</p>
 
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-lg p-6 sm:p-10">
         {/* STEP 1: Select Service & Dentist */}

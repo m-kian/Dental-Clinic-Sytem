@@ -3,27 +3,46 @@ import Navbar from './components/Navbar';
 import Home from './components/Home';
 import Booking from './components/Booking';
 import AdminDashboard from './components/AdminDashboard';
-import StaffAuth from './components/StaffAuth'; // <-- Import Auth component
+import StaffAuth from './components/StaffAuth';
+import Services from './components/Services';
+import Dentists from './components/Dentists';
+import FAQ from './components/FAQ';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [staffUser, setStaffUser] = useState(null); // Tracks logged-in staff session
 
+  const [bookingSelection, setBookingSelection] = useState({});
+
+  const openBooking = (selection = {}) => {
+    setBookingSelection(selection);
+    setActiveTab('booking');
+  };
+
+  const navigate = (tab) => {
+    if (tab === 'booking') openBooking();
+    else setActiveTab(tab);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 antialiased flex flex-col justify-between">
       <div>
-        <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Navbar activeTab={activeTab} setActiveTab={navigate} />
         
         <main>
           {activeTab === 'home' && (
             <Home 
-              onBookNow={() => setActiveTab('booking')}
-              onExploreServices={() => setActiveTab('home')}
+              onBookNow={() => openBooking()}
+              onExploreServices={() => setActiveTab('services')}
             />
           )}
 
+          {activeTab === 'services' && <Services onBook={openBooking} />}
+          {activeTab === 'dentists' && <Dentists onBook={openBooking} />}
+          {activeTab === 'faq' && <FAQ onBook={openBooking} />}
+
           {activeTab === 'booking' && (
-            <Booking onBookingComplete={() => setActiveTab('home')} />
+            <Booking initialServiceId={bookingSelection.serviceId} initialDentistId={bookingSelection.dentistId} />
           )}
 
           {activeTab === 'admin' && (
