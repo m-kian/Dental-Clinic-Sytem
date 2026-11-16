@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { api } from '../api';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Calendar, 
@@ -23,12 +24,24 @@ export default function AdminDashboard({ staffUser, onLogout }) {
     30: 'rootcanal',
   });
 
-  const appointments = [
-    { id: 101, patient: 'Elena Rostova', service: 'Laser Teeth Whitening', date: '2026-11-12', time: '09:00 AM', status: 'Confirmed', doctor: 'Dr. Jenkins' },
-    { id: 102, patient: 'Mark Anthony', service: 'Root Canal Therapy', date: '2026-11-12', time: '11:30 AM', status: 'Pending', doctor: 'Dr. Ramirez' },
-    { id: 103, patient: 'Clarissa Santos', service: 'Orthodontic Checkup', date: '2026-11-12', time: '02:00 PM', status: 'Completed', doctor: 'Dr. Jenkins' },
-    { id: 104, patient: 'Roberto Gomez', service: 'Cleaning & Examination', date: '2026-11-13', time: '10:00 AM', status: 'Confirmed', doctor: 'Dr. Ramirez' },
-  ];
+  const [appointments, setAppointments] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(null);
+  const load = () => {
+    setLoading(true); setError('');
+    return api('/appointments').then(setAppointments).catch(error => setError(error.message)).finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+  const changeStatus = async (id, status) => {
+    setUpdating(id); setError('');
+    try {
+      const updated = await api(`/appointments/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      setAppointments(rows => rows.map(row => row.id === id ? updated : row));
+    } catch (error) { setError(error.message); }
+    finally { setUpdating(null); }
+  };
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
   const handleToothClick = (toothNum) => {
     const statuses = ['healthy', 'cavity', 'filled', 'crown', 'rootcanal', 'missing'];
@@ -44,6 +57,8 @@ export default function AdminDashboard({ staffUser, onLogout }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {error && <p role="alert" className="p-4 rounded-xl bg-rose-50 text-rose-700">{error}</p>}
+      <button onClick={load} disabled={loading} className="text-sm font-semibold text-sky-700">{loading ? 'Loading appointments…' : 'Refresh appointments'}</button>
       {/* Header & Role Banner */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
@@ -91,7 +106,7 @@ export default function AdminDashboard({ staffUser, onLogout }) {
           <div className="p-3 bg-sky-50 text-sky-600 rounded-xl"><Calendar className="w-6 h-6" /></div>
           <div>
             <p className="text-xs text-slate-500">Today's Visits</p>
-            <p className="text-xl font-bold text-slate-900">14 Patients</p>
+            <p className="text-xl font-bold text-slate-900">{appointments.filter(a => a.date === today && a.status !== 'Cancelled').length} Patients</p>
           </div>
         </div>
 
@@ -99,7 +114,7 @@ export default function AdminDashboard({ staffUser, onLogout }) {
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><Users className="w-6 h-6" /></div>
           <div>
             <p className="text-xs text-slate-500">Active Patients</p>
-            <p className="text-xl font-bold text-slate-900">1,240</p>
+            <p className="text-xl font-bold text-slate-900">{new Set(appointments.map(a => a.email)).size}</p>
           </div>
         </div>
 
@@ -107,15 +122,15 @@ export default function AdminDashboard({ staffUser, onLogout }) {
           <div className="p-3 bg-amber-50 text-amber-600 rounded-xl"><Clock className="w-6 h-6" /></div>
           <div>
             <p className="text-xs text-slate-500">Pending Requests</p>
-            <p className="text-xl font-bold text-slate-900">3</p>
+            <p className="text-xl font-bold text-slate-900">{appointments.filter(a => a.status === 'Pending').length}</p>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-purple-50 text-purple-600 rounded-xl"><DollarSign className="w-6 h-6" /></div>
           <div>
-            <p className="text-xs text-slate-500">Daily Revenue</p>
-            <p className="text-xl font-bold text-slate-900">$2,450</p>
+            <p className="text-xs text-slate-500">Completed Visits</p>
+            <p className="text-xl font-bold text-slate-900">{appointments.filter(a => a.status === 'Completed').length}</p>
           </div>
         </div>
       </div>
@@ -149,6 +164,7 @@ export default function AdminDashboard({ staffUser, onLogout }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {!loading && filteredAppointments.length === 0 && <tr><td colSpan="6" className="p-6 text-center text-slate-500">No appointments found.</td></tr>}
                 {filteredAppointments.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4 font-bold text-slate-900">{row.patient}</td>
@@ -164,15 +180,13 @@ export default function AdminDashboard({ staffUser, onLogout }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => {
-                          setSelectedPatientChart(row.patient);
-                          setActiveTab('odontogram');
-                        }}
-                        className="text-sky-600 hover:text-sky-800 font-semibold inline-flex items-center gap-1 ml-auto"
-                      >
-                        <FileText className="w-3.5 h-3.5" /> Open Chart
-                      </button>
+                      {['Pending', 'Confirmed'].includes(row.status) && <select aria-label={`Update appointment for ${row.patient}`} value="" disabled={updating === row.id} onChange={e => changeStatus(row.id, e.target.value)} className="rounded-lg border p-2 text-slate-700">
+                        <option value="" disabled>Update status</option>
+                        {row.status === 'Pending' && <option value="Confirmed">Confirm</option>}
+                        <option value="Completed">Complete</option>
+                        <option value="Cancelled">Cancel</option>
+                      </select>}
+
                     </td>
                   </tr>
                 ))}
@@ -193,6 +207,7 @@ export default function AdminDashboard({ staffUser, onLogout }) {
               Select Different Patient
             </button>
           </div>
+          <p className="text-sm text-amber-800">Demo tooth chart only: changes are not saved or linked to patient records.</p>
           <Odontogram toothData={toothData} onToothClick={handleToothClick} />
         </div>
       )}

@@ -1,79 +1,51 @@
-# Miguel's Dental System
+# Miguel's Dental Clinic System
 
-A modern dental clinic management interface designed to simplify appointment booking and clinic operations.
+React, Vite, and Tailwind frontend with a Node HTTP API and SQLite database.
+Requires Node.js 24 or newer (uses built-in `node:sqlite`).
 
-The system provides a patient-facing website and a dedicated staff portal for managing appointments and viewing dental records.
+## Run locally
 
-## Features
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env` and set `STAFF_PASSWORD` to a strong password.
+3. In one terminal run `npm run server`.
+4. In another terminal run `npm run dev`, then open the Vite URL.
 
-- **Clinic Website** — Overview of dental services and clinic information.
-- **Appointment Booking** — Select treatments, dentists, preferred dates, and available time slots.
-- **Staff Portal** — Staff login and registration interface.
-- **Admin Dashboard** — Appointment overview, patient search, and status monitoring.
-- **Dental Charting** — Interactive 32-tooth odontogram for recording dental conditions.
+Vite proxies `/api` requests to the backend at `127.0.0.1:3001`.
+The backend creates `server/data/clinic.sqlite` on first start. Database files
+and `.env` are ignored by Git. Keep the database on persistent disk and back it up.
+`DATABASE_PATH` can override the location.
 
-## Tech Stack
+## Implemented
 
-- React 19
-- Vite
-- Tailwind CSS
-- Lucide React
+- Services, dentist profiles, expandable FAQ, and booking preselection.
+- Persisted appointment requests with server validation and duration overlap checks.
+- “Any available specialist” assigns a dentist with a free interval.
+- Staff password authentication with an HttpOnly session cookie; sessions expire
+  after eight hours and are cleared when the server restarts.
+- Protected appointment list and confirm, complete, or cancel actions.
+- Live availability checks against pending and confirmed bookings. Cancelled and
+  completed bookings do not block a slot. Dates and times use Asia/Manila.
 
-## Getting Started
+## Checks
 
-**1. Clone the repository**
+- `npm run build` builds the frontend.
+- `npm test` tests real HTTP requests against a temporary SQLite database,
+  including persistence after restart, overlapping appointments, validation,
+  staff authentication, logout, cancellation, and automatic dentist assignment.
 
-```bash
-git clone https://github.com/m-kian/Dental-Clinic-Sytem.git
-```
+## Remaining work before production
 
-**2. Navigate to the project directory**
+This is a local development implementation. Catalog prices, clinic claims,
+profiles, operating hours, and contact information still need clinic approval.
+The slot schedule is fixed; dentist-specific schedules and holidays are not yet
+implemented. Email/SMS notifications and patient self-service are not enabled.
+Tooth charting remains an unsaved demo and is not linked to patient records.
 
-```bash
-cd Dental-Clinic-Sytem
-```
+Staff access currently uses one administrator-configured password, not individual
+staff accounts. Add individual accounts, role permissions, login rate limits,
+audit history, and patient-record controls before using this for real clinic data.
 
-**3. Install dependencies**
-
-```bash
-npm install
-```
-
-**4. Start the development server**
-
-```bash
-npm run dev
-```
-
-Open the local URL provided by Vite in your browser.
-
-## Project Structure
-
-```text
-Dental-Clinic-Sytem/
-├── public/
-├── src/
-│   ├── components/
-│   │   ├── AdminDashboard.jsx
-│   │   ├── Booking.jsx
-│   │   ├── Home.jsx
-│   │   ├── Navbar.jsx
-│   │   ├── Odontogram.jsx
-│   │   └── StaffAuth.jsx
-│   ├── App.jsx
-│   ├── App.css
-│   ├── index.css
-│   └── main.jsx
-├── index.html
-├── package.json
-├── tailwind.config.js
-└── vite.config.js
-```
-
-## Development Status
-
-This project currently serves as a frontend prototype. Authentication, appointment processing, and dashboard records use client-side state and sample data. Backend integration, persistent storage, and actual email notifications are not yet configured.
-
----
-
-**Built with React and Vite.**
+For deployment, serve the frontend and `/api` under the same HTTPS origin with a
+reverse proxy and persistent storage; `vite preview` alone does not proxy the API.
+Set `NODE_ENV=production` to enable Secure session cookies. No deployment is
+configured by this project.

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { api } from '../api';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -27,18 +28,43 @@ export default function Booking({ initialServiceId, initialDentistId }) {
     notes: '',
   });
 
-  const availableTimes = [
-    '09:00 AM', '10:00 AM', '11:30 AM', '02:00 PM', '03:30 PM', '04:45 PM'
-  ];
+  const [availableTimes, setAvailableTimes] = useState([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [receipt, setReceipt] = useState(null);
+  const [availabilityVersion, setAvailabilityVersion] = useState(0);
+
+  useEffect(() => {
+    if (!selectedDate || !selectedService || !selectedDentist) return;
+    const controller = new AbortController();
+    setLoadingTimes(true);
+    setSelectedTime('');
+    api(`/availability?${new URLSearchParams({ date: selectedDate, serviceId: selectedService.id, dentistId: selectedDentist.id })}`, { signal: controller.signal })
+      .then(data => setAvailableTimes(data.times))
+      .catch(error => { if (error.name !== 'AbortError') { setAvailableTimes([]); setError(error.message); } })
+      .finally(() => { if (!controller.signal.aborted) setLoadingTimes(false); });
+    return () => controller.abort();
+  }, [selectedDate, selectedService, selectedDentist, availabilityVersion]);
 
   const handleInputChange = (e) => {
     setPatientData({ ...patientData, [e.target.name]: e.target.value });
   };
 
-  const handleCompleteBooking = (e) => {
+  const handleCompleteBooking = async (e) => {
     e.preventDefault();
-    if (!patientData.fullName || !patientData.email || !patientData.phone) return;
-    setStep(4); // Advance to Confirmation Screen
+    if (saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      const result = await api('/appointments', { method: 'POST', body: JSON.stringify({ ...patientData, serviceId: selectedService.id, dentistId: selectedDentist.id, date: selectedDate, time: selectedTime }) });
+      setReceipt(result);
+      setStep(4);
+    } catch (error) {
+      setError(error.message);
+      setStep(2);
+      setAvailabilityVersion(version => version + 1);
+    } finally { setSaving(false); }
   };
 
   return (
@@ -61,8 +87,9 @@ export default function Booking({ initialServiceId, initialDentistId }) {
         </div>
       </div>
 
-      <p className="rounded-2xl bg-sky-50 border border-sky-100 p-4 text-sm text-sky-900">Demo booking: prices and times are samples. Appointment requests are not saved or sent to the clinic yet.</p>
+      <p className="rounded-2xl bg-sky-50 border border-sky-100 p-4 text-sm text-sky-900">Prices and practitioner profiles are samples. Requests are saved as pending and require staff confirmation. Email notifications are not enabled.</p>
 
+      {error && <p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-lg p-6 sm:p-10">
         {/* STEP 1: Select Service & Dentist */}
         {step === 1 && (
@@ -134,11 +161,14 @@ export default function Booking({ initialServiceId, initialDentistId }) {
                 <CalendarIcon className="w-5 h-5 text-sky-600" /> Select Date & Time Slot
               </h2>
 
+              {loadingTimes && <p role="status" className="text-sm text-slate-500">Checking availability…</p>}
+              {selectedDate && !loadingTimes && availableTimes.length === 0 && <p className="text-sm text-slate-500">No times available. Please choose another date.</p>}
               <div className="grid sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-2">Preferred Date</label>
                   <input
                     type="date"
+                    min={new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())}
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
                     className="w-full p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 text-sm"
@@ -151,6 +181,7 @@ export default function Booking({ initialServiceId, initialDentistId }) {
                     {availableTimes.map((time) => (
                       <button
                         key={time}
+                        disabled={loadingTimes}
                         onClick={() => setSelectedTime(time)}
                         className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all ${
                           selectedTime === time
@@ -174,7 +205,7 @@ export default function Booking({ initialServiceId, initialDentistId }) {
                 <ChevronLeft className="w-4 h-4" /> Back
               </button>
               <button
-                disabled={!selectedDate || !selectedTime}
+                disabled={!selectedDate || !selectedTime || loadingTimes}
                 onClick={() => setStep(3)}
                 className="flex-[2] py-3.5 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-1"
               >
@@ -254,9 +285,10 @@ export default function Booking({ initialServiceId, initialDentistId }) {
               </button>
               <button
                 type="submit"
+                disabled={saving}
                 className="flex-[2] py-3.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-sm shadow-md shadow-sky-600/20"
               >
-                Confirm Appointment
+                {saving ? 'Saving request…' : 'Request Appointment'}
               </button>
             </div>
           </form>
@@ -270,8 +302,8 @@ export default function Booking({ initialServiceId, initialDentistId }) {
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-slate-900">Appointment Confirmed!</h2>
-              <p className="text-slate-600 text-sm">We have sent a confirmation email to <span className="font-semibold text-slate-800">{patientData.email}</span>.</p>
+              <h2 className="text-2xl font-bold text-slate-900">Appointment Request Saved</h2>
+              <p className="text-slate-600 text-sm">Your request #{receipt?.id} is pending staff confirmation. No email has been sent.</p>
             </div>
 
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-left max-w-md mx-auto space-y-2 text-sm">
@@ -285,7 +317,7 @@ export default function Booking({ initialServiceId, initialDentistId }) {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Doctor:</span>
-                <span className="font-semibold text-slate-800">{selectedDentist?.name}</span>
+                <span className="font-semibold text-slate-800">{receipt?.doctor || selectedDentist?.name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Date & Time:</span>
@@ -296,6 +328,8 @@ export default function Booking({ initialServiceId, initialDentistId }) {
             <button
               onClick={() => {
                 setStep(1);
+                setError('');
+                setReceipt(null);
                 setSelectedService(null);
                 setSelectedDentist(null);
                 setSelectedDate('');

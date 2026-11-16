@@ -1,3 +1,4 @@
+import { api } from './api';
 import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
@@ -47,7 +48,7 @@ export default function App() {
 
           {activeTab === 'admin' && (
             staffUser ? (
-              <AdminDashboard staffUser={staffUser} onLogout={() => setStaffUser(null)} />
+              <AdminDashboard staffUser={staffUser} onLogout={async () => { await api('/logout', { method: 'POST' }); setStaffUser(null); }} />
             ) : (
               <StaffAuth onLoginSuccess={(user) => setStaffUser(user)} />
             )
